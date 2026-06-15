@@ -921,6 +921,7 @@ function importXLSX(input){
 
 // ── FIREBASE REST API ENGINE ──────────────────────────────────────
 const FB_URL='https://tracker-imagensalud-bd852-default-rtdb.firebaseio.com';
+const FB_SECRET='PEGA_TU_SECRET_AQUI'; // <-- reemplaza esto con tu secret
 
 function setSyncStatus(text,cls){
   const st=document.getElementById('sync-status');
@@ -947,7 +948,7 @@ function updateSyncUI(connected){
 async function fbPush(record){
   if(!record||!record.id) return;
   try{
-    await fetch(`${FB_URL}/solicitudes/${record.id}.json`,{
+    await fetch(`${FB_URL}/solicitudes/${record.id}.json?auth=${FB_SECRET}`,{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(record)
@@ -957,27 +958,45 @@ async function fbPush(record){
 
 async function fbDelete(id){
   try{
-    await fetch(`${FB_URL}/solicitudes/${id}.json`,{method:'DELETE'});
+    await fetch(`${FB_URL}/solicitudes/${id}.json?auth=${FB_SECRET}`,{method:'DELETE'});
   }catch(e){ console.warn('fbDelete error:',e); }
 }
 
-async function fbPullAll(){
+async function fbPullAll(initialLoad){
   try{
-    const r=await fetch(`${FB_URL}/solicitudes.json`);
+    const r=await fetch(`${FB_URL}/solicitudes.json?auth=${FB_SECRET}`);
     if(!r.ok) throw new Error('HTTP '+r.status);
     const serverData=await r.json();
-    if(!serverData) return true;
-    const serverRecords=Object.values(serverData);
-    serverRecords.forEach(srec=>{
-      if(!srec||!srec.id) return;
-      normalizeRecord(srec);
-      const local=data.find(s=>s.id===srec.id);
-      if(!local){ data.push(srec); }
-      else if((srec.updatedAt||0)>(local.updatedAt||0)){ Object.assign(local,srec); normalizeRecord(local); }
-    });
-    // Remove records deleted on server
-    const serverIds=new Set(Object.keys(serverData));
-    data=data.filter(s=>serverIds.has(s.id));
+
+    if(initialLoad){
+      // On first load: Firebase is the absolute source of truth
+      // Replace local data entirely — no merging, no re-uploading
+      if(!serverData){
+        // Firebase is empty — push local data to Firebase
+        for(const s of data){ await fbPush(s); }
+      } else {
+        // Firebase has data — use it, discard local
+        data=Object.values(serverData).filter(s=>s&&s.id).map(s=>normalizeRecord(s)||s);
+      }
+    } else {
+      // Periodic sync: merge server changes into local
+      if(!serverData){
+        // Server empty — nothing to merge
+        return true;
+      }
+      const serverRecords=Object.values(serverData);
+      serverRecords.forEach(srec=>{
+        if(!srec||!srec.id) return;
+        normalizeRecord(srec);
+        const local=data.find(s=>s.id===srec.id);
+        if(!local){ data.push(srec); }
+        else if((srec.updatedAt||0)>(local.updatedAt||0)){ Object.assign(local,srec); normalizeRecord(local); }
+      });
+      // Remove locally any record deleted on server
+      const serverIds=new Set(Object.keys(serverData));
+      data=data.filter(s=>serverIds.has(s.id));
+    }
+
     nextId=computeNextId();
     save(false);
     refreshDroplists();
@@ -991,24 +1010,17 @@ async function fbPullAll(){
 
 async function startFirebaseSync(){
   setSyncStatus('Conectando a Firebase…','syncing');
-  // Initial pull
-  const ok=await fbPullAll();
+  // Initial pull — Firebase is the source of truth, overrides local data
+  const ok=await fbPullAll(true);
   if(ok){
     updateSyncUI(true);
-    // Push any local data not yet on server
-    try{
-      const r=await fetch(`${FB_URL}/solicitudes.json`);
-      const serverData=await r.json()||{};
-      const serverIds=new Set(Object.keys(serverData));
-      for(const s of data){ if(!serverIds.has(s.id)) await fbPush(s); }
-    }catch(e){}
   }else{
     updateSyncUI(false);
     setSyncStatus('Sin conexión a Firebase (modo local)','err');
   }
   // Poll every 8 seconds for changes from other users
   setInterval(async()=>{
-    const ok=await fbPullAll();
+    const ok=await fbPullAll(false);
     if(ok) updateSyncUI(true);
     else updateSyncUI(false);
   }, 8000);
