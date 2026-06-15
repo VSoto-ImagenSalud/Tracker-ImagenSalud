@@ -437,27 +437,12 @@ function save(showLabel){
 }
 function load(){
   try{const r=localStorage.getItem('tracker_is2');if(r){const p=JSON.parse(r);data=p.data||[];nextId=p.nextId||1;}}catch(e){}
-  if(!data.length) loadDemo();
   data.forEach(s=>normalizeRecord(s));
   nextId=computeNextId();
   refreshDroplists(); renderAll();
   startFirebaseSync();
 }
 
-function loadDemo(){
-  const d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.toISOString().slice(0,10);};
-  const fl=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
-  data=[
-    mk('Papel higiénico y jabón dispensador x 24 unidades','RRSS','María González','Víctor','Alta','ASEO','Validación Técnica',d(1),'','Llegó por Teams',d(2),'10452','OC-2026-0140','Comercial Hidra SpA','ImagenSalud S.A.','Comercial Hidra SpA','Bodega Central',185000),
-    mk('Guantes nitrilo talla M x 200 unidades','Pabellón','Dr. Reyes','Víctor','Alta','INSUMOS CLINICOS','En cotización','','','Urgente, stock crítico',d(4),'20871','','Distribuidora MedSur','ImagenSalud S.A.','Distribuidora MedSur','Pabellón',0),
-    mk('Tóner impresora HP LaserJet Pro','Admisión','Carmen Pérez','Víctor','Media','ARTICULOS OFICINA','Pendiente','','','Correo entrante',d(0),'30119','','InsuOffice Ltda','ImagenSalud S.A.','InsuOffice Ltda','Admisión',0),
-    mk('Alcohol en gel 500ml x 24 unidades','UCI','Enf. Morales','Víctor','Alta','INSUMOS CLINICOS','Comprada',d(3),d(0),'',d(7),'20455','OC-2026-0098','Distribuidora MedSur','ImagenSalud S.A.','Distribuidora MedSur','UCI',420000),
-    mk('Bolsas de basura 80L x 100 unidades','Aseo y Limpieza','Luis Soto','Víctor','Baja','ASEO','Pendiente','','','Verbal',d(0),'10298','','Comercial Hidra SpA','ImagenEstética','Comercial Hidra SpA','Bodega Central',0),
-    mk('Resmas papel carta 75g x 10 unidades','Administración','Jefa Admin','Víctor','Media','PAPELERIA','Eliminada',d(6),d(8),'',d(12),'40012','OC-2026-0102','InsuOffice Ltda','ImagenSalud S.A.','InsuOffice Ltda','Administración',95000),
-    mk('Mascarillas N95 x 50 unidades','Pabellón','Enf. Torres','Víctor','Alta','INSUMOS CLINICOS','En proceso',d(1),'','Teams',d(3),'20890','OC-2026-0151','Distribuidora MedSur','ImagenSalud S.A.','Distribuidora MedSur','Pabellón',310000),
-    mk('Detergente multiusos 5L x 12 unidades','Aseo y Limpieza','Luis Soto','Víctor','Media','ASEO','Recibido',d(2),d(0),'',d(6),'10310','OC-2026-0095','Comercial Hidra SpA','ImagenEstética','Comercial Hidra SpA','Bodega Central',128000),
-  ];
-}
 function mk(desc,area,sol,comp,prio,cat,estado,ocFecha,resol,obs,ingreso,codigo,festim,freal,ocNum,prov,empresa,provSug,destino,monto){
   const id='SOL-'+String(nextId++).padStart(3,'0');
   return{id,desc,area,solicitante:sol,comprador:comp,prioridad:prio,categoria:cat,codigo:codigo||'',estado,
@@ -972,8 +957,8 @@ async function fbPullAll(initialLoad){
       // On first load: Firebase is the absolute source of truth
       // Replace local data entirely — no merging, no re-uploading
       if(!serverData){
-        // Firebase is empty — push local data to Firebase
-        for(const s of data){ await fbPush(s); }
+        // Firebase is empty — start fresh, no demo data
+        data=[];
       } else {
         // Firebase has data — use it, discard local
         data=Object.values(serverData).filter(s=>s&&s.id).map(s=>normalizeRecord(s)||s);
