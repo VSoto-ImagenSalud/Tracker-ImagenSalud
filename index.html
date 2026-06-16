@@ -387,11 +387,6 @@ input[type=text]:focus{border-color:var(--is-cyan);}
           <select id="f-est-in"><option>Pendiente</option><option>Validación Técnica</option><option>En proceso</option><option>En cotización</option><option>Recotización</option><option>Comprada</option><option>Recibido</option><option>Eliminada</option></select>
         </div>
         <div class="fg2"><label>Proveedor sugerido</label><input id="f-provsug-in" list="dl-provs-sug" placeholder="Proveedor recomendado"><datalist id="dl-provs-sug"></datalist></div>
-        <div class="fg2"><label>Destino</label><input id="f-destino-in" list="dl-destinos" placeholder="Ej: Bodega central, Pabellón 2"><datalist id="dl-destinos"></datalist></div>
-        <div class="fg2"><label>Fecha emisión OC</label><input type="date" id="f-oc-in"></div>
-        <div class="fg2"><label>Monto neto OC ($)</label><input type="number" id="f-monto-in" placeholder="Se calcula solo, o edítalo" min="0" step="1"></div>
-        <div class="fg2"><label>Fecha estimada entrega (cotización)</label><input type="date" id="f-festim-in"></div>
-        <div class="fg2"><label>Fecha real de entrega</label><input type="date" id="f-freal-in"></div>
         <div class="fg2 form-full"><label>Observaciones / canal de llegada</label><textarea id="f-obs-in" rows="2" placeholder="Ej: Llegó por Teams, urgente por stock crítico"></textarea></div>
       </div>
 
@@ -462,7 +457,6 @@ function normalizeRecord(s){
   s.id=s.id||'';
   s.area=s.area||'';
   s.empresaSolicitante=s.empresaSolicitante||'';
-  s.destino=s.destino||'';
   s.solicitante=s.solicitante||'';
   s.comprador=s.comprador||'';
   s.prioridad=s.prioridad||'Media';
@@ -485,19 +479,22 @@ function normalizeRecord(s){
     s.lineas=[{
       codigo:s.codigo||'', desc:s.desc||'', categoria:s.categoria||FAMILIAS[1],
       um:s.unidadMedida||'', cantidad:s.cantidad||1, precio:s.precioUnit||0,
-      centroCostos:s.centroCostos||''
+      centroCostos:s.centroCostos||'', destino:s.destino||''
     }];
   }
   s.lineas.forEach(l=>{
     l.codigo=l.codigo||''; l.desc=l.desc||''; l.categoria=l.categoria||FAMILIAS[1];
     l.um=l.um||''; l.cantidad=Number(l.cantidad)||1; l.precio=Number(l.precio)||0;
     l.centroCostos=l.centroCostos||'';
+    l.destino=l.destino||s.destino||'';
   });
+  delete s.destino; // ahora vive por línea
   // Campos derivados para compatibilidad (tabla/búsqueda/Kanban usan desc/codigo/categoria resumidos)
   s.desc=s.lineas.map(l=>l.desc).filter(Boolean).join(' | ')||'(sin descripción)';
   s.codigo=s.lineas.map(l=>l.codigo).filter(Boolean).join(', ');
   s.categoria=s.lineas[0].categoria;
   s.centrosCostos=[...new Set(s.lineas.map(l=>l.centroCostos).filter(Boolean))].join(', ');
+  s.destinos=[...new Set(s.lineas.map(l=>l.destino).filter(Boolean))].join(', ');
   // Si no hay monto manual, se calcula de las líneas
   const lineasTotal=s.lineas.reduce((a,l)=>a+(l.cantidad*l.precio),0);
   if(!s.montoNetoOC || s.montoNetoOC===0) s.montoNetoOC=lineasTotal;
@@ -552,8 +549,9 @@ function refreshDroplists(){
   document.getElementById('dl-empresas').innerHTML=empresas.map(p=>`<option value="${p}">`).join('');
   const provsSug=[...new Set(data.map(s=>s.proveedorSugerido).filter(Boolean))].sort();
   document.getElementById('dl-provs-sug').innerHTML=provsSug.map(p=>`<option value="${p}">`).join('');
-  const destinos=[...new Set(data.map(s=>s.destino).filter(Boolean))].sort();
-  document.getElementById('dl-destinos').innerHTML=destinos.map(p=>`<option value="${p}">`).join('');
+  const destinos=[...new Set(data.flatMap(s=>(s.lineas||[]).map(l=>l.destino)).filter(Boolean))].sort();
+  const dlDest=document.getElementById('dl-destinos');
+  if(dlDest) dlDest.innerHTML=destinos.map(p=>`<option value="${p}">`).join('');
 }
 
 function switchTab(i){
@@ -661,7 +659,7 @@ function renderTable(fd){
       <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${(s.lineas||[]).length} ítem${(s.lineas||[]).length===1?'':'s'}</span></td>
       <td style="font-size:10px;">${(s.lineas&&s.lineas.length===1)?`<input class="tbl-text" value="${(s.lineas[0].centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',0,this.value)">`:(s.centrosCostos||'—')}</td>
       <td style="max-width:220px;white-space:normal;font-size:10px;">${s.desc}</td>
-      <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td>${textInputHTML(s,'destino')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
+      <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td style="font-size:10px;">${(s.lineas&&s.lineas.length===1)?`<input class="tbl-text" value="${(s.lineas[0].destino||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaDest('${s.id}',0,this.value)">`:(s.destinos||'—')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
       <td>${prioSelectHTML(s)}</td>
       <td>${estadoSelectHTML(s)}</td>
       <td>${aprobSelectHTML(s)}</td>
@@ -740,11 +738,20 @@ function updateLineaCC(id,idx,value){
   fbPush(s);
   toast('Centro de costos actualizado ✓','ok');
 }
+function updateLineaDest(id,idx,value){
+  const s=data.find(x=>x.id===id);if(!s||!s.lineas||!s.lineas[idx])return;
+  s.lineas[idx].destino=value.trim();
+  normalizeRecord(s);
+  s.updatedAt=now();
+  save();renderAll();
+  fbPush(s);
+  toast('Destino actualizado ✓','ok');
+}
 
 let formLineas=[]; // líneas en edición dentro del modal
 
 function blankLinea(){
-  return {codigo:'',desc:'',categoria:FAMILIAS[1],um:'',cantidad:1,precio:0,centroCostos:''};
+  return {codigo:'',desc:'',categoria:FAMILIAS[1],um:'',cantidad:1,precio:0,centroCostos:'',destino:''};
 }
 
 function renderLineas(){
@@ -753,7 +760,7 @@ function renderLineas(){
   wrap.innerHTML=`<table class="lineas-table"><thead><tr>
     <th class="col-codigo">Código</th><th class="col-desc">Descripción</th><th class="col-cat">Familia</th>
     <th class="col-um">U. Medida</th><th class="col-cant">Cant.</th><th class="col-precio">Precio Unit.</th>
-    <th class="col-cc">Centro Costos</th><th class="col-sub">Subtotal</th><th class="col-del"></th>
+    <th class="col-cc">Centro Costos</th><th class="col-cc">Destino</th><th class="col-sub">Subtotal</th><th class="col-del"></th>
   </tr></thead><tbody>
   ${formLineas.map((l,i)=>`<tr>
     <td class="col-codigo"><input value="${(l.codigo||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'codigo',this.value)" placeholder="10234"></td>
@@ -763,11 +770,13 @@ function renderLineas(){
     <td class="col-cant"><input type="number" min="0" step="1" value="${l.cantidad}" onchange="updateLinea(${i},'cantidad',this.value)"></td>
     <td class="col-precio"><input type="number" min="0" step="1" value="${l.precio}" onchange="updateLinea(${i},'precio',this.value)"></td>
     <td class="col-cc"><input value="${(l.centroCostos||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'centroCostos',this.value)" placeholder="CC-101"></td>
+    <td class="col-cc"><input list="dl-destinos" value="${(l.destino||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'destino',this.value)" placeholder="Bodega, Pabellón…"></td>
     <td class="col-sub"><span class="linea-subtotal">${fmtCLP((Number(l.cantidad)||0)*(Number(l.precio)||0))}</span></td>
     <td class="col-del">${formLineas.length>1?`<button type="button" class="btn-del-linea" onclick="removeLinea(${i})">✕</button>`:''}</td>
   </tr>`).join('')}
   </tbody></table>
-  <div class="lineas-total-row">Total estimado: ${fmtCLP(total)}</div>`;
+  <div class="lineas-total-row">Total estimado: ${fmtCLP(total)}</div>
+  <datalist id="dl-destinos"></datalist>`;
 }
 function addLinea(){ formLineas.push(blankLinea()); renderLineas(); }
 function removeLinea(i){ if(formLineas.length<=1) return; formLineas.splice(i,1); renderLineas(); }
@@ -785,11 +794,6 @@ function openNew(){
   document.getElementById('f-prio-in').value='Media';
   document.getElementById('f-est-in').value='Pendiente';
   document.getElementById('f-provsug-in').value='';
-  document.getElementById('f-destino-in').value='';
-  document.getElementById('f-oc-in').value='';
-  document.getElementById('f-monto-in').value='';
-  document.getElementById('f-festim-in').value='';
-  document.getElementById('f-freal-in').value='';
   formLineas=[blankLinea()];
   renderLineas();
   document.getElementById('modal-form').classList.add('open');
@@ -806,11 +810,6 @@ function openEdit(id){
   document.getElementById('f-prio-in').value=s.prioridad||'Media';
   document.getElementById('f-est-in').value=s.estado||'Pendiente';
   document.getElementById('f-provsug-in').value=s.proveedorSugerido||'';
-  document.getElementById('f-destino-in').value=s.destino||'';
-  document.getElementById('f-oc-in').value=s.fechaEmisionOC||'';
-  document.getElementById('f-monto-in').value=s.montoNetoOC||'';
-  document.getElementById('f-festim-in').value=s.fechaEstimEntrega||'';
-  document.getElementById('f-freal-in').value=s.fechaRealEntrega||'';
   document.getElementById('f-obs-in').value=s.observaciones||'';
   formLineas=JSON.parse(JSON.stringify(s.lineas&&s.lineas.length?s.lineas:[blankLinea()]));
   renderLineas();
@@ -822,7 +821,7 @@ function saveForm(){
   }
   const estado=document.getElementById('f-est-in').value;
   const lineasClean=formLineas.map(l=>({...l,desc:(l.desc||'').trim(),codigo:(l.codigo||'').trim()})).filter(l=>l.desc);
-  const montoManual=Number(document.getElementById('f-monto-in').value)||0;
+  const montoManual=0; // este valor se ajusta luego directamente en la tabla
   const montoCalc=lineasClean.reduce((a,l)=>a+(Number(l.cantidad)||0)*(Number(l.precio)||0),0);
 
   if(editId){
@@ -831,9 +830,8 @@ function saveForm(){
     Object.assign(s,{area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),
       solicitante:document.getElementById('f-sol-in').value.trim(),comprador:document.getElementById('f-comp-in').value.trim(),
       prioridad:document.getElementById('f-prio-in').value,estado,lineas:lineasClean,
-      proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
-      fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
-      fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
+      proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),
+      montoNetoOC:s.montoNetoOC||montoCalc,
       observaciones:document.getElementById('f-obs-in').value.trim()});
     normalizeRecord(s);
     s.hist.push({ts:fmtTs(new Date()),msg:cambio?`Estado: → "${estado}"`:'Solicitud editada'});
@@ -844,9 +842,8 @@ function saveForm(){
     const rec={id,area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),
       solicitante:document.getElementById('f-sol-in').value.trim(),comprador:document.getElementById('f-comp-in').value.trim()||'Víctor',
       prioridad:document.getElementById('f-prio-in').value,estado,lineas:lineasClean,
-      fechaIngreso:today(),proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
-      numeroOC:'',proveedor:'',fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
-      fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
+      fechaIngreso:today(),proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),
+      numeroOC:'',proveedor:'',fechaEmisionOC:'',montoNetoOC:montoManual||montoCalc,fechaEstimEntrega:'',fechaRealEntrega:'',
       observaciones:document.getElementById('f-obs-in').value.trim(),
       hist:[{ts:fmtTs(new Date()),msg:`Solicitud creada · Estado: ${estado}`}],updatedAt:now()};
     normalizeRecord(rec);
@@ -884,6 +881,7 @@ function openDetail(id){
       <td>${l.codigo||'—'}</td><td style="white-space:normal;">${l.desc||'—'}</td><td>${l.categoria||'—'}</td>
       <td>${l.um||'—'}</td><td>${l.cantidad}</td><td>${fmtCLP(l.precio)}</td>
       <td><input class="tbl-text" style="width:90px;" value="${(l.centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',${i},this.value)"></td>
+      <td><input class="tbl-text" style="width:90px;" value="${(l.destino||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaDest('${s.id}',${i},this.value)"></td>
       <td>${fmtCLP((l.cantidad||0)*(l.precio||0))}</td>
     </tr>`).join('');
   document.getElementById('det-body').innerHTML=`
@@ -895,7 +893,6 @@ function openDetail(id){
     <div class="det-row"><span class="det-lbl">Prioridad</span><span class="b ${s.prioridad==='Alta'?'br':s.prioridad==='Baja'?'bg':'bo'}">${s.prioridad}</span></div>
     <div class="det-row"><span class="det-lbl">Estado</span><span class="b ${ECLS[s.estado]}">${s.estado}</span></div>
     <div class="det-row"><span class="det-lbl">Fecha ingreso</span><span class="det-val">${s.fechaIngreso||'—'}</span></div>
-    <div class="det-row"><span class="det-lbl">Destino</span><span class="det-val">${s.destino||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Proveedor sugerido</span><span class="det-val">${s.proveedorSugerido||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Aprobación</span><span class="b ${s.aprobacion==='Aprobado'?'bg':s.aprobacion==='Rechazado'?'br':'bo'}">${s.aprobacion||'Pendiente'}</span></div>
     <div class="det-row"><span class="det-lbl">N° Orden Compra</span><span class="det-val">${s.numeroOC||'—'}</span></div>
@@ -909,7 +906,7 @@ function openDetail(id){
     <div class="det-row"><span class="det-lbl">Días en curso</span><span class="det-val">${diasEnCurso(s)} días</span></div>
     ${s.observaciones?`<div class="det-row"><span class="det-lbl">Observaciones</span><span class="det-val">${s.observaciones}</span></div>`:''}
     <div class="section-lbl">Líneas de la solicitud</div>
-    <table class="mt" style="width:100%;"><thead><tr><th>Código</th><th>Descripción</th><th>Familia</th><th>U.Medida</th><th>Cant.</th><th>Precio Unit.</th><th>C. Costos</th><th>Subtotal</th></tr></thead><tbody>${lineasHTML}</tbody></table>
+    <table class="mt" style="width:100%;"><thead><tr><th>Código</th><th>Descripción</th><th>Familia</th><th>U.Medida</th><th>Cant.</th><th>Precio Unit.</th><th>C. Costos</th><th>Destino</th><th>Subtotal</th></tr></thead><tbody>${lineasHTML}</tbody></table>
     <div class="section-lbl">Cambiar estado</div>
     <div class="estado-btns">${ESTADOS.map(e=>`<button class="est-btn${s.estado===e?' '+EACT[e]:''}" onclick="changeEstado('${id}','${e}')">${e}</button>`).join('')}</div>
     <div class="modal-actions" style="margin-top:6px;justify-content:flex-start;">
@@ -952,12 +949,12 @@ function closeFocus(e){
 document.getElementById('focus-close').addEventListener('click',()=>{closeFocus({target:document.getElementById('focus-overlay')});});
 
 function exportXLSX(){
-  const rows=[['N° Solicitud','Centros Costos (solicitud)','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Días en curso','¿Fuera de SLA?','Observaciones']];
+  const rows=[['N° Solicitud','Centros Costos (solicitud)','Destinos (solicitud)','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Destino','Área','Empresa solicitante','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Días en curso','¿Fuera de SLA?','Observaciones']];
   data.forEach(s=>{
     const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:1,precio:0,centroCostos:''}];
     lineas.forEach(l=>{
-      rows.push([s.id,s.centrosCostos||'',l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',
-        s.area,s.empresaSolicitante||'',s.destino||'',s.solicitante,s.comprador,s.prioridad,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',s.ocEnviada||'No',Number(s.montoNetoOC)||0,s.proveedor||'',
+      rows.push([s.id,s.centrosCostos||'',s.destinos||'',l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',l.destino||'',
+        s.area,s.empresaSolicitante||'',s.solicitante,s.comprador,s.prioridad,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',s.ocEnviada||'No',Number(s.montoNetoOC)||0,s.proveedor||'',
         s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]);
     });
   });
@@ -989,7 +986,7 @@ function importXLSX(input){
           codigo:String(r['Código']||''), desc:String(r['Descripción Línea']||r['Descripción']||''),
           categoria:String(r['Familia']||FAMILIAS[1]), um:String(r['U.Medida']||''),
           cantidad:Number(r['Cantidad'])||1, precio:Number(r['Precio Unit.'])||0,
-          centroCostos:String(r['Centro Costos']||'')
+          centroCostos:String(r['Centro Costos']||''), destino:String(r['Destino']||'')
         });
       });
       let imp=0;
@@ -997,7 +994,7 @@ function importXLSX(input){
         const r=g.meta;
         if(!g.lineas.some(l=>l.desc)) return;
         const exists=data.find(s=>s.id===rid);
-        const sol={id:rid,lineas:g.lineas.filter(l=>l.desc),area:String(r['Área']||''),empresaSolicitante:String(r['Empresa solicitante']||''),destino:String(r['Destino']||''),solicitante:String(r['Solicitante']||''),
+        const sol={id:rid,lineas:g.lineas.filter(l=>l.desc),area:String(r['Área']||''),empresaSolicitante:String(r['Empresa solicitante']||''),solicitante:String(r['Solicitante']||''),
           comprador:String(r['Comprador']||'Víctor'),prioridad:String(r['Prioridad']||'Media'),
           estado:String(r['Estado']||'Pendiente'),aprobacion:String(r['Aprobación']||'Pendiente'),proveedorSugerido:String(r['Proveedor sugerido']||''),
           numeroOC:String(r['N° OC']||''),ocEnviada:String(r['OC Enviada']||'No'),montoNetoOC:Number(r['Monto neto OC'])||0,proveedor:String(r['Proveedor real']||r['Proveedor']||''),
