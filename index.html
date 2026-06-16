@@ -505,6 +505,7 @@ function normalizeRecord(s){
   s.desc=s.lineas.map(l=>l.desc).filter(Boolean).join(' | ')||'(sin descripción)';
   s.codigo=s.lineas.map(l=>l.codigo).filter(Boolean).join(', ');
   s.categoria=s.lineas[0].categoria;
+  s.centrosCostos=[...new Set(s.lineas.map(l=>l.centroCostos).filter(Boolean))].join(', ');
   // Si no hay monto manual, se calcula de las líneas
   const lineasTotal=s.lineas.reduce((a,l)=>a+(l.cantidad*l.precio),0);
   if(!s.montoNetoOC || s.montoNetoOC===0) s.montoNetoOC=lineasTotal;
@@ -662,10 +663,11 @@ function renderKanban(fd){
 function renderTable(fd){
   const sorted=[...fd].sort((a,b)=>{const oi=ESTADOS.indexOf(a.estado)-ESTADOS.indexOf(b.estado);return oi||PRIO_ORD[a.prioridad]-PRIO_ORD[b.prioridad];});
   document.getElementById('main-table').innerHTML=`
-    <thead><tr><th>N° Solicitud</th><th>Líneas</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>OC Enviada</th><th>Monto Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
+    <thead><tr><th>N° Solicitud</th><th>Líneas</th><th>Centros Costos</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>OC Enviada</th><th>Monto Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
     <tbody>${sorted.map(s=>`<tr>
       <td><span class="sol-id" style="cursor:pointer;" onclick="openDetail('${s.id}')">${s.id}</span></td>
       <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${(s.lineas||[]).length} ítem${(s.lineas||[]).length===1?'':'s'}</span></td>
+      <td style="font-size:10px;">${s.centrosCostos||'—'}</td>
       <td style="max-width:220px;white-space:normal;font-size:10px;">${s.desc}</td>
       <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td>${textInputHTML(s,'destino')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
       <td>${prioSelectHTML(s)}</td>
@@ -951,11 +953,11 @@ function closeFocus(e){
 document.getElementById('focus-close').addEventListener('click',()=>{closeFocus({target:document.getElementById('focus-overlay')});});
 
 function exportXLSX(){
-  const rows=[['N° Solicitud','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Fecha resolución','Días en curso','¿Fuera de SLA?','Observaciones']];
+  const rows=[['N° Solicitud','Centros Costos (solicitud)','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Fecha resolución','Días en curso','¿Fuera de SLA?','Observaciones']];
   data.forEach(s=>{
     const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:1,precio:0,centroCostos:''}];
     lineas.forEach(l=>{
-      rows.push([s.id,l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',
+      rows.push([s.id,s.centrosCostos||'',l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',
         s.area,s.empresaSolicitante||'',s.destino||'',s.solicitante,s.comprador,s.prioridad,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',s.ocEnviada||'No',Number(s.montoNetoOC)||0,s.proveedor||'',
         s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',s.fechaResolucion,diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]);
     });
