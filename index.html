@@ -392,7 +392,6 @@ input[type=text]:focus{border-color:var(--is-cyan);}
         <div class="fg2"><label>Monto neto OC ($)</label><input type="number" id="f-monto-in" placeholder="Se calcula solo, o edítalo" min="0" step="1"></div>
         <div class="fg2"><label>Fecha estimada entrega (cotización)</label><input type="date" id="f-festim-in"></div>
         <div class="fg2"><label>Fecha real de entrega</label><input type="date" id="f-freal-in"></div>
-        <div class="fg2"><label>Fecha resolución</label><input type="date" id="f-resol-in"></div>
         <div class="fg2 form-full"><label>Observaciones / canal de llegada</label><textarea id="f-obs-in" rows="2" placeholder="Ej: Llegó por Teams, urgente por stock crítico"></textarea></div>
       </div>
 
@@ -456,12 +455,6 @@ function load(){
   startFirebaseSync();
 }
 
-function mk(desc,area,sol,comp,prio,cat,estado,ocFecha,resol,obs,ingreso,codigo,festim,freal,ocNum,prov,empresa,provSug,destino,monto){
-  const id='SOL-'+String(nextId++).padStart(3,'0');
-  return{id,desc,area,solicitante:sol,comprador:comp,prioridad:prio,categoria:cat,codigo:codigo||'',estado,
-    fechaIngreso:ingreso||today(),empresaSolicitante:empresa||'',proveedorSugerido:provSug||'',destino:destino||'',aprobacion:'Pendiente',numeroOC:ocNum||'',proveedor:prov||'',fechaEmisionOC:ocFecha||'',montoNetoOC:monto||0,fechaEstimEntrega:festim||'',fechaRealEntrega:freal||'',fechaResolucion:resol,observaciones:obs,updatedAt:now(),
-    hist:[{ts:fmtTs(new Date()),msg:'Solicitud creada · Estado: '+estado}]};
-}
 function today(){return new Date().toISOString().slice(0,10);}
 function fmtCLP(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CL');}
 function normalizeRecord(s){
@@ -483,7 +476,6 @@ function normalizeRecord(s){
   s.fechaEmisionOC=s.fechaEmisionOC||'';
   s.fechaEstimEntrega=s.fechaEstimEntrega||'';
   s.fechaRealEntrega=s.fechaRealEntrega||'';
-  s.fechaResolucion=s.fechaResolucion||'';
   s.observaciones=s.observaciones||'';
   s.hist=s.hist||[];
   s.updatedAt=s.updatedAt||now();
@@ -525,7 +517,7 @@ function isOutOfSLA(s){
   return dias>2;
 }
 function diasEnCurso(s){
-  const ini=new Date(s.fechaIngreso);const fin=s.fechaResolucion?new Date(s.fechaResolucion):new Date();
+  const ini=new Date(s.fechaIngreso);const fin=s.fechaEmisionOC?new Date(s.fechaEmisionOC):new Date();
   return Math.max(0,Math.round((fin-ini)/(1000*60*60*24)));
 }
 
@@ -798,7 +790,6 @@ function openNew(){
   document.getElementById('f-monto-in').value='';
   document.getElementById('f-festim-in').value='';
   document.getElementById('f-freal-in').value='';
-  document.getElementById('f-resol-in').value='';
   formLineas=[blankLinea()];
   renderLineas();
   document.getElementById('modal-form').classList.add('open');
@@ -820,7 +811,6 @@ function openEdit(id){
   document.getElementById('f-monto-in').value=s.montoNetoOC||'';
   document.getElementById('f-festim-in').value=s.fechaEstimEntrega||'';
   document.getElementById('f-freal-in').value=s.fechaRealEntrega||'';
-  document.getElementById('f-resol-in').value=s.fechaResolucion||'';
   document.getElementById('f-obs-in').value=s.observaciones||'';
   formLineas=JSON.parse(JSON.stringify(s.lineas&&s.lineas.length?s.lineas:[blankLinea()]));
   renderLineas();
@@ -844,7 +834,7 @@ function saveForm(){
       proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
       fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
       fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
-      fechaResolucion:document.getElementById('f-resol-in').value,observaciones:document.getElementById('f-obs-in').value.trim()});
+      observaciones:document.getElementById('f-obs-in').value.trim()});
     normalizeRecord(s);
     s.hist.push({ts:fmtTs(new Date()),msg:cambio?`Estado: → "${estado}"`:'Solicitud editada'});
     s.updatedAt=now();
@@ -857,7 +847,7 @@ function saveForm(){
       fechaIngreso:today(),proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
       numeroOC:'',proveedor:'',fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
       fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
-      fechaResolucion:document.getElementById('f-resol-in').value,observaciones:document.getElementById('f-obs-in').value.trim(),
+      observaciones:document.getElementById('f-obs-in').value.trim(),
       hist:[{ts:fmtTs(new Date()),msg:`Solicitud creada · Estado: ${estado}`}],updatedAt:now()};
     normalizeRecord(rec);
     data.unshift(rec);
@@ -916,7 +906,6 @@ function openDetail(id){
     <div class="det-row"><span class="det-lbl">SLA (2 días)</span><span class="b ${isOutOfSLA(s)?'br':'bg'}">${isOutOfSLA(s)?'Fuera de SLA':'Dentro de SLA'}</span></div>
     ${s.fechaEstimEntrega?`<div class="det-row"><span class="det-lbl">F. estim. entrega</span><span class="det-val">${s.fechaEstimEntrega}</span></div>`:''}
     ${s.fechaRealEntrega?`<div class="det-row"><span class="det-lbl">F. real entrega</span><span class="det-val">${s.fechaRealEntrega}</span></div>`:''}
-    ${s.fechaResolucion?`<div class="det-row"><span class="det-lbl">Fecha resolución</span><span class="det-val">${s.fechaResolucion}</span></div>`:''}
     <div class="det-row"><span class="det-lbl">Días en curso</span><span class="det-val">${diasEnCurso(s)} días</span></div>
     ${s.observaciones?`<div class="det-row"><span class="det-lbl">Observaciones</span><span class="det-val">${s.observaciones}</span></div>`:''}
     <div class="section-lbl">Líneas de la solicitud</div>
@@ -963,13 +952,13 @@ function closeFocus(e){
 document.getElementById('focus-close').addEventListener('click',()=>{closeFocus({target:document.getElementById('focus-overlay')});});
 
 function exportXLSX(){
-  const rows=[['N° Solicitud','Centros Costos (solicitud)','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Fecha resolución','Días en curso','¿Fuera de SLA?','Observaciones']];
+  const rows=[['N° Solicitud','Centros Costos (solicitud)','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Días en curso','¿Fuera de SLA?','Observaciones']];
   data.forEach(s=>{
     const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:1,precio:0,centroCostos:''}];
     lineas.forEach(l=>{
       rows.push([s.id,s.centrosCostos||'',l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',
         s.area,s.empresaSolicitante||'',s.destino||'',s.solicitante,s.comprador,s.prioridad,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',s.ocEnviada||'No',Number(s.montoNetoOC)||0,s.proveedor||'',
-        s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',s.fechaResolucion,diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]);
+        s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]);
     });
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);
@@ -1014,7 +1003,7 @@ function importXLSX(input){
           numeroOC:String(r['N° OC']||''),ocEnviada:String(r['OC Enviada']||'No'),montoNetoOC:Number(r['Monto neto OC'])||0,proveedor:String(r['Proveedor real']||r['Proveedor']||''),
           fechaIngreso:String(r['Fecha ingreso']||today()),fechaEmisionOC:String(r['Fecha emisión OC']||''),
           fechaEstimEntrega:String(r['Fecha estim. entrega']||''),fechaRealEntrega:String(r['Fecha real entrega']||''),
-          fechaResolucion:String(r['Fecha resolución']||''),observaciones:String(r['Observaciones']||''),
+          observaciones:String(r['Observaciones']||''),
           hist:[{ts:fmtTs(new Date()),msg:'Importado desde Excel'}]};
         if(exists){Object.assign(exists,sol);}else{data.push(sol);imp++;}
       });
