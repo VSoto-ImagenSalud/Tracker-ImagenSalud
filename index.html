@@ -217,6 +217,9 @@ input[type=text]:focus{border-color:var(--is-cyan);}
 
 /* ── ID BADGE ── */
 .sol-id{display:inline-flex;align-items:center;background:var(--is-navy);color:#fff;font-size:8px;font-weight:700;padding:1px 7px;border-radius:3px;letter-spacing:.04em;}
+.linea-idx{font-size:8px;color:var(--text3);margin-left:3px;}
+tr.linea-multi{background:var(--bg3);}
+tr.linea-multi:hover{background:var(--is-cyan-lt);}
 .lineas-table{width:100%;border-collapse:collapse;margin-top:6px;}
 .lineas-table th{font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:4px 5px;text-align:left;border-bottom:1px solid var(--border);}
 .lineas-table td{padding:3px 4px;vertical-align:top;}
@@ -562,20 +565,35 @@ function switchTab(i){
   renderAll();
 }
 
+function flattenLineas(fd){
+  // Cada línea hereda los campos de su solicitud padre (estado, área, comprador, fechas, etc.)
+  // para que el análisis del dashboard se haga a nivel de línea, no de solicitud.
+  const rows=[];
+  fd.forEach(s=>{
+    const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:0,precio:0,centroCostos:'',destino:''}];
+    lineas.forEach(l=>{
+      rows.push({...s, _linea:l, area:l.destino?s.area:s.area, cantidad:l.cantidad||0, precio:l.precio||0,
+        centroCostos:l.centroCostos||'', destinoLinea:l.destino||'', categoriaLinea:l.categoria||'', codigoLinea:l.codigo||''});
+    });
+  });
+  return rows;
+}
+
 function renderAll(){
   refreshDroplists();
   const fd=getFiltered();
-  renderKPIs(fd); renderCharts(fd); renderKanban(fd); renderTable(fd);
+  const ld=flattenLineas(fd);
+  renderKPIs(ld); renderCharts(ld); renderKanban(ld); renderTable(fd);
 }
 
-function renderKPIs(fd){
-  const total=fd.length,pend=fd.filter(s=>s.estado==='Pendiente').length;
-  const cursa=fd.filter(s=>s.estado==='En proceso'||s.estado==='En cotización').length;
-  const comp=fd.filter(s=>s.estado==='Comprada').length;
-  const late=fd.filter(s=>isOutOfSLA(s)).length;
-  const montoTotal=fd.filter(s=>s.estado!=='Eliminada').reduce((a,s)=>a+(Number(s.subtotalLineas)||0),0);
+function renderKPIs(ld){
+  const total=ld.length,pend=ld.filter(s=>s.estado==='Pendiente').length;
+  const cursa=ld.filter(s=>s.estado==='En proceso'||s.estado==='En cotización').length;
+  const comp=ld.filter(s=>s.estado==='Comprada').length;
+  const late=ld.filter(s=>isOutOfSLA(s)).length;
+  const montoTotal=ld.filter(l=>l.estado!=='Eliminada').reduce((a,l)=>a+(Number(l.cantidad)||0)*(Number(l.precio)||0),0);
   document.getElementById('kpi-row').innerHTML=
-    kpiH('Total solicitudes',total,'ka','')+
+    kpiH('Total líneas',total,'ka','')+
     kpiH('Pendientes',pend,'ko',pend>5?'dn':'')+
     kpiH('En curso',cursa,'kb','')+
     kpiH('Compradas',comp,'kg','up')+
@@ -587,9 +605,9 @@ function kpiH(lbl,v,cls,badge){
   return`<div class="kpi ${cls}"><div class="kpi-lbl">${lbl}</div><div class="kpi-val">${v}</div><div>${b}</div></div>`;
 }
 
-function renderCharts(fd){
+function renderCharts(ld){
   const byM={};
-  fd.forEach(s=>{const m=s.fechaIngreso.slice(0,7);if(!byM[m])byM[m]={};ESTADOS.forEach(e=>{if(!(e in byM[m]))byM[m][e]=0;});byM[m][s.estado]=(byM[m][s.estado]||0)+1;});
+  ld.forEach(l=>{const m=l.fechaIngreso.slice(0,7);if(!byM[m])byM[m]={};ESTADOS.forEach(e=>{if(!(e in byM[m]))byM[m][e]=0;});byM[m][l.estado]=(byM[m][l.estado]||0)+1;});
   const months=Object.keys(byM).sort();
   const mLbls=months.map(m=>{const[y,mo]=m.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+mo-1]+'\''+y.slice(2);});
   dc('c-evol','bar',{labels:mLbls,datasets:[
@@ -601,17 +619,17 @@ function renderCharts(fd){
     {label:'Eliminada',data:months.map(m=>byM[m]['Eliminada']||0),backgroundColor:'#D1D5DB',stack:'s'},
   ]},{scales:{x:{stacked:true,grid:{display:false},ticks:{color:TX,font:FOS,autoSkip:false,maxRotation:45}},y:{stacked:true,grid:{color:GC},ticks:{color:TX,font:FO}}},plugins:{legend:{display:false},tooltip:{mode:'index'}}});
 
-  const byA={};fd.forEach(s=>{if(s.area)byA[s.area]=(byA[s.area]||0)+1;});
+  const byA={};ld.forEach(l=>{if(l.area)byA[l.area]=(byA[l.area]||0)+1;});
   const sa=Object.entries(byA).sort((a,b)=>b[1]-a[1]);
   dc('c-area','bar',{labels:sa.map(x=>x[0]),datasets:[{data:sa.map(x=>x[1]),backgroundColor:sa.map((_,i)=>i===0?IS_NAVY:i===1?IS_CYAN:IS_MID),borderRadius:3}]},
     {indexAxis:'y',scales:{x:{grid:{color:GC},ticks:{color:TX,font:FO}},y:{grid:{display:false},ticks:{color:TX,font:FO}}},plugins:{legend:{display:false}}});
 
-  const bySt=ESTADOS.map(e=>fd.filter(s=>s.estado===e).length);
+  const bySt=ESTADOS.map(e=>ld.filter(l=>l.estado===e).length);
   const ECOL=['#F59E0B','#8B5CF6',IS_MID,'#06B6D4','#F97316','#10B981',IS_NAVY,'#9CA3B0'];
   dc('c-estado','doughnut',{labels:ESTADOS,datasets:[{data:bySt,backgroundColor:ECOL,borderWidth:0,hoverOffset:4}]},
     {cutout:'62%',plugins:{legend:{display:true,position:'right',labels:{font:FO,color:TX,boxWidth:9,padding:8}}}});
 
-  const byComp={};fd.forEach(s=>{if(s.comprador){if(!byComp[s.comprador])byComp[s.comprador]={sum:0,n:0};byComp[s.comprador].sum+=diasEnCurso(s);byComp[s.comprador].n++;}});
+  const byComp={};ld.forEach(l=>{if(l.comprador){if(!byComp[l.comprador])byComp[l.comprador]={sum:0,n:0};byComp[l.comprador].sum+=diasEnCurso(l);byComp[l.comprador].n++;}});
   const comps=Object.entries(byComp).sort((a,b)=>a[1].sum/a[1].n-b[1].sum/b[1].n);
   dc('c-comprador','bar',{labels:comps.map(x=>x[0]),datasets:[{data:comps.map(x=>+(x[1].sum/x[1].n).toFixed(1)),backgroundColor:IS_NAVY,borderRadius:3}]},
     {scales:{x:{grid:{display:false},ticks:{color:TX,font:FO}},y:{grid:{color:GC},ticks:{color:TX,font:FO,callback:v=>v+'d'}}},plugins:{legend:{display:false}}});
@@ -630,21 +648,28 @@ function dc(id,type,cdata,opts){
   CH[id]=new Chart(ctx,{type,data:cdata,options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},...opts,plugins:{legend:{display:false,...(opts?.plugins?.legend||{})},...(opts?.plugins||{})}}});
 }
 
-function renderKanban(fd){
+function renderKanban(ld){
   const board=document.getElementById('kanban-board');
+  // Agrupa por solicitud para saber el índice/total de líneas de cada una
+  const byId={};ld.forEach(l=>{if(!byId[l.id])byId[l.id]=[];byId[l.id].push(l);});
   board.innerHTML=ESTADOS.map(est=>{
     const k=EST_KEY[est];
-    const items=fd.filter(s=>s.estado===est).sort((a,b)=>PRIO_ORD[a.prioridad]-PRIO_ORD[b.prioridad]);
-    const cards=items.length?items.map(s=>`
-      <div class="kcard prio-${s.prioridad==='Alta'?'a':s.prioridad==='Media'?'m':'b'}" onclick="openDetail('${s.id}')">
-        <div class="kcard-id">${s.id}</div>
-        <div class="kcard-title">${s.desc.length>72?s.desc.slice(0,69)+'…':s.desc}</div>
+    const items=ld.filter(l=>l.estado===est).sort((a,b)=>PRIO_ORD[a.prioridad]-PRIO_ORD[b.prioridad]);
+    const cards=items.length?items.map(l=>{
+      const desc=(l._linea&&l._linea.desc)?l._linea.desc:l.desc;
+      const nLineas=byId[l.id]?byId[l.id].length:1;
+      const idx=byId[l.id]?byId[l.id].indexOf(l)+1:1;
+      return`
+      <div class="kcard prio-${l.prioridad==='Alta'?'a':l.prioridad==='Media'?'m':'b'}" onclick="openDetail('${l.id}')">
+        <div class="kcard-id">${l.id}${nLineas>1?` <span class="linea-idx">(${idx}/${nLineas})</span>`:''}</div>
+        <div class="kcard-title">${desc.length>72?desc.slice(0,69)+'…':desc}</div>
         <div class="kcard-meta">
-          <span class="ktag">${s.prioridad}</span>
-          ${s.area?`<span class="ktag">${s.area}</span>`:''}
-          ${isOutOfSLA(s)?'<span class="late-dot" title="Fuera de SLA"></span>':''}
+          <span class="ktag">${l.prioridad}</span>
+          ${l.area?`<span class="ktag">${l.area}</span>`:''}
+          ${isOutOfSLA(l)?'<span class="late-dot" title="Fuera de SLA"></span>':''}
         </div>
-      </div>`).join(''):`<div class="empty-col">Sin solicitudes</div>`;
+      </div>`;
+    }).join(''):`<div class="empty-col">Sin solicitudes</div>`;
     return`<div class="kcol">
       <div class="kcol-hdr h-${k}"><span>${est}</span><span class="kcol-cnt">${items.length}</span></div>
       <div class="kcol-body">${cards}</div>
@@ -654,23 +679,29 @@ function renderKanban(fd){
 
 function renderTable(fd){
   const sorted=[...fd].sort((a,b)=>{const oi=ESTADOS.indexOf(a.estado)-ESTADOS.indexOf(b.estado);return oi||PRIO_ORD[a.prioridad]-PRIO_ORD[b.prioridad];});
-  document.getElementById('main-table').innerHTML=`
-    <thead><tr><th>N° Solicitud</th><th>Líneas</th><th>Centros Costos</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>OC Enviada</th><th>Cantidad</th><th>Monto Neto Unitario</th><th>Subtotal Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
-    <tbody>${sorted.map(s=>`<tr>
-      <td><span class="sol-id" style="cursor:pointer;" onclick="openDetail('${s.id}')">${s.id}</span></td>
-      <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${(s.lineas||[]).length} ítem${(s.lineas||[]).length===1?'':'s'}</span></td>
-      <td style="font-size:10px;">${(s.lineas&&s.lineas.length===1)?`<input class="tbl-text" value="${(s.lineas[0].centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',0,this.value)">`:(s.centrosCostos||'—')}</td>
-      <td style="max-width:220px;white-space:normal;font-size:10px;">${s.desc}</td>
-      <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td style="font-size:10px;">${(s.lineas&&s.lineas.length===1)?`<input class="tbl-text" value="${(s.lineas[0].destino||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaDest('${s.id}',0,this.value)">`:(s.destinos||'—')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
+  let rowsHTML='';
+  sorted.forEach(s=>{
+    const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:0,precio:0,centroCostos:'',destino:''}];
+    const nLineas=lineas.length;
+    lineas.forEach((l,i)=>{
+      rowsHTML+=`<tr${nLineas>1?' class="linea-multi"':''}>
+      <td><span class="sol-id" style="cursor:pointer;" onclick="openDetail('${s.id}')">${s.id}</span>${nLineas>1?`<span class="linea-idx"> (${i+1}/${nLineas})</span>`:''}</td>
+      <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${nLineas} ítem${nLineas===1?'':'s'}</span></td>
+      <td style="font-size:10px;"><input class="tbl-text" value="${(l.centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',${i},this.value)"></td>
+      <td style="font-size:10px;"><input class="tbl-text" value="${(l.codigo||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaTxt('${s.id}',${i},'codigo',this.value)"></td>
+      <td style="max-width:220px;white-space:normal;font-size:10px;"><input class="tbl-text" style="width:100%;" value="${(l.desc||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaTxt('${s.id}',${i},'desc',this.value)"></td>
+      <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td>
+      <td style="font-size:10px;"><input class="tbl-text" value="${(l.destino||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaDest('${s.id}',${i},this.value)"></td>
+      <td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
       <td>${prioSelectHTML(s)}</td>
       <td>${estadoSelectHTML(s)}</td>
       <td>${aprobSelectHTML(s)}</td>
       <td>${textInputHTML(s,'proveedorSugerido')}</td>
       <td>${textInputHTML(s,'numeroOC')}</td>
       <td>${ocEnviadaSelectHTML(s)}</td>
-      <td style="text-align:center;">${(s.lineas&&s.lineas.length===1)?`<input type="number" min="0" step="1" class="tbl-num" style="width:60px;" value="${s.lineas[0].cantidad||0}" onchange="updateLineaNum('${s.id}',0,'cantidad',this.value)">`:`<span class="det-val" style="font-size:9px;cursor:pointer;font-weight:600;" onclick="openDetail('${s.id}')" title="Editar en el detalle">${s.cantidadTotal||0} (ver det.)</span>`}</td>
-      <td>${(s.lineas&&s.lineas.length===1)?`<input type="number" min="0" step="1" class="tbl-num" value="${s.lineas[0].precio||0}" onchange="updateLineaNum('${s.id}',0,'precio',this.value)">`:`<span class="det-val" style="font-size:9px;cursor:pointer;" onclick="openDetail('${s.id}')" title="Editar en el detalle">Ver detalle</span>`}</td>
-      <td style="font-weight:600;color:var(--is-navy);">${fmtCLP(s.subtotalLineas||0)}</td>
+      <td style="text-align:center;"><input type="number" min="0" step="1" class="tbl-num" style="width:60px;" value="${l.cantidad||0}" onchange="updateLineaNum('${s.id}',${i},'cantidad',this.value)"></td>
+      <td><input type="number" min="0" step="1" class="tbl-num" value="${l.precio||0}" onchange="updateLineaNum('${s.id}',${i},'precio',this.value)"></td>
+      <td style="font-weight:600;color:var(--is-navy);">${fmtCLP((l.cantidad||0)*(l.precio||0))}</td>
       <td>${textInputHTML(s,'proveedor')}</td>
       <td>${s.fechaIngreso||'—'}</td>
       <td>${dateInputHTML(s,'fechaEmisionOC')}</td>
@@ -678,8 +709,13 @@ function renderTable(fd){
       <td>${dateInputHTML(s,'fechaRealEntrega')}</td>
       <td>${diasEnCurso(s)}d</td>
       <td>${isOutOfSLA(s)?'<span class="b br">Sí</span>':'<span class="b bg">No</span>'}</td>
-      <td><button class="row-del" onclick="requestDelete('${s.id}')" title="Eliminar solicitud">🗑</button></td>
-    </tr>`).join('')}</tbody>`;
+      <td style="display:flex;gap:3px;">${nLineas>1?`<button class="row-del" onclick="requestDeleteLinea('${s.id}',${i})" title="Eliminar esta línea">✕</button>`:''}${i===0?`<button class="row-del" onclick="requestDelete('${s.id}')" title="Eliminar solicitud completa">🗑</button>`:''}</td>
+    </tr>`;
+    });
+  });
+  document.getElementById('main-table').innerHTML=`
+    <thead><tr><th>N° Solicitud</th><th>Líneas</th><th>Centros Costos</th><th>Código</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>OC Enviada</th><th>Cantidad</th><th>Monto Neto Unitario</th><th>Subtotal Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
+    <tbody>${rowsHTML}</tbody>`;
 }
 
 function aprobSelectHTML(s){
@@ -750,6 +786,16 @@ function updateLineaDest(id,idx,value){
   save();renderAll();
   fbPush(s);
   toast('Destino actualizado ✓','ok');
+}
+function updateLineaTxt(id,idx,field,value){
+  const s=data.find(x=>x.id===id);if(!s||!s.lineas||!s.lineas[idx])return;
+  s.lineas[idx][field]=value.trim();
+  normalizeRecord(s);
+  s.updatedAt=now();
+  save();renderAll();
+  fbPush(s);
+  const labels={codigo:'Código',desc:'Descripción'};
+  toast(`${labels[field]||'Campo'} actualizado ✓`,'ok');
 }
 function updateLineaNum(id,idx,field,value){
   const s=data.find(x=>x.id===id);if(!s||!s.lineas||!s.lineas[idx])return;
@@ -868,6 +914,17 @@ function requestDelete(id){
   fbDelete(id);
   toast(`${id} eliminada`,'ok');
 }
+function requestDeleteLinea(id,idx){
+  const s=data.find(x=>x.id===id);if(!s||!s.lineas||s.lineas.length<=1)return;
+  const l=s.lineas[idx];
+  if(!confirm(`¿Eliminar esta línea de ${id}?\n\n"${(l.desc||'').slice(0,60)}${(l.desc||'').length>60?'…':''}"`))return;
+  s.lineas.splice(idx,1);
+  normalizeRecord(s);
+  s.updatedAt=now();
+  save();refreshDroplists();renderAll();
+  fbPush(s);
+  toast('Línea eliminada ✓','ok');
+}
 function deleteCurrent(){
   if(!editId)return;
   if(!confirm('¿Eliminar '+editId+'? Esta acción no se puede deshacer.'))return;
@@ -884,7 +941,7 @@ function openDetail(id){
   const EACT={Pendiente:'active-pend','Validación Técnica':'active-vtec','En proceso':'active-proc','En cotización':'active-cotz',Recotización:'active-recot',Comprada:'active-comp',Recibido:'active-recib',Eliminada:'active-elim'};
   document.getElementById('det-title').textContent=s.id+' — '+s.desc.slice(0,45)+(s.desc.length>45?'…':'');
   const lineasHTML=(s.lineas||[]).map((l,i)=>`<tr>
-      <td>${l.codigo||'—'}</td><td style="white-space:normal;">${l.desc||'—'}</td><td>${l.categoria||'—'}</td>
+      <td><input class="tbl-text" style="width:70px;" value="${(l.codigo||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaTxt('${s.id}',${i},'codigo',this.value)"></td><td style="white-space:normal;">${l.desc||'—'}</td><td>${l.categoria||'—'}</td>
       <td>${l.um||'—'}</td>
       <td><input type="number" min="0" step="1" class="tbl-num" style="width:60px;" value="${l.cantidad}" onchange="updateLineaNum('${s.id}',${i},'cantidad',this.value)"></td>
       <td><input type="number" min="0" step="1" class="tbl-num" style="width:85px;" value="${l.precio}" onchange="updateLineaNum('${s.id}',${i},'precio',this.value)"></td>
