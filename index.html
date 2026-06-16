@@ -667,7 +667,7 @@ function renderTable(fd){
     <tbody>${sorted.map(s=>`<tr>
       <td><span class="sol-id" style="cursor:pointer;" onclick="openDetail('${s.id}')">${s.id}</span></td>
       <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${(s.lineas||[]).length} ítem${(s.lineas||[]).length===1?'':'s'}</span></td>
-      <td style="font-size:10px;">${s.centrosCostos||'—'}</td>
+      <td style="font-size:10px;">${(s.lineas&&s.lineas.length===1)?`<input class="tbl-text" value="${(s.lineas[0].centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',0,this.value)">`:(s.centrosCostos||'—')}</td>
       <td style="max-width:220px;white-space:normal;font-size:10px;">${s.desc}</td>
       <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td>${textInputHTML(s,'destino')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
       <td>${prioSelectHTML(s)}</td>
@@ -738,6 +738,15 @@ function inlineUpdate(id,field,value){
   save();renderAll();
   fbPush(s);
   toast(`${s.id} actualizado ✓`,'ok');
+}
+function updateLineaCC(id,idx,value){
+  const s=data.find(x=>x.id===id);if(!s||!s.lineas||!s.lineas[idx])return;
+  s.lineas[idx].centroCostos=value.trim();
+  normalizeRecord(s);
+  s.updatedAt=now();
+  save();renderAll();
+  fbPush(s);
+  toast('Centro de costos actualizado ✓','ok');
 }
 
 let formLineas=[]; // líneas en edición dentro del modal
@@ -881,9 +890,10 @@ function openDetail(id){
   const ECLS={Pendiente:'bo','Validación Técnica':'bvt','En proceso':'ba','En cotización':'bcz',Recotización:'brt',Comprada:'bg',Recibido:'bnv',Eliminada:'bx'};
   const EACT={Pendiente:'active-pend','Validación Técnica':'active-vtec','En proceso':'active-proc','En cotización':'active-cotz',Recotización:'active-recot',Comprada:'active-comp',Recibido:'active-recib',Eliminada:'active-elim'};
   document.getElementById('det-title').textContent=s.id+' — '+s.desc.slice(0,45)+(s.desc.length>45?'…':'');
-  const lineasHTML=(s.lineas||[]).map(l=>`<tr>
+  const lineasHTML=(s.lineas||[]).map((l,i)=>`<tr>
       <td>${l.codigo||'—'}</td><td style="white-space:normal;">${l.desc||'—'}</td><td>${l.categoria||'—'}</td>
-      <td>${l.um||'—'}</td><td>${l.cantidad}</td><td>${fmtCLP(l.precio)}</td><td>${l.centroCostos||'—'}</td>
+      <td>${l.um||'—'}</td><td>${l.cantidad}</td><td>${fmtCLP(l.precio)}</td>
+      <td><input class="tbl-text" style="width:90px;" value="${(l.centroCostos||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="updateLineaCC('${s.id}',${i},this.value)"></td>
       <td>${fmtCLP((l.cantidad||0)*(l.precio||0))}</td>
     </tr>`).join('');
   document.getElementById('det-body').innerHTML=`
