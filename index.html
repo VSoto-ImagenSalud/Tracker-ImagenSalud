@@ -217,6 +217,17 @@ input[type=text]:focus{border-color:var(--is-cyan);}
 
 /* ── ID BADGE ── */
 .sol-id{display:inline-flex;align-items:center;background:var(--is-navy);color:#fff;font-size:8px;font-weight:700;padding:1px 7px;border-radius:3px;letter-spacing:.04em;}
+.lineas-table{width:100%;border-collapse:collapse;margin-top:6px;}
+.lineas-table th{font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:4px 5px;text-align:left;border-bottom:1px solid var(--border);}
+.lineas-table td{padding:3px 4px;vertical-align:top;}
+.lineas-table input,.lineas-table select{width:100%;font-size:10px;padding:4px 5px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--text);font-family:'Montserrat',sans-serif;}
+.lineas-table input:focus,.lineas-table select:focus{border-color:var(--is-cyan);outline:none;}
+.col-codigo{width:80px;}.col-desc{width:auto;min-width:140px;}.col-cat{width:110px;}.col-um{width:60px;}
+.col-cant{width:55px;}.col-precio{width:80px;}.col-cc{width:90px;}.col-sub{width:75px;}.col-del{width:30px;}
+.linea-subtotal{font-size:10px;color:var(--text2);font-weight:600;padding-top:6px;display:block;text-align:right;}
+.btn-del-linea{background:var(--c-danger-bg);color:var(--c-danger);border:1px solid #fca5a5;border-radius:4px;padding:3px 6px;font-size:11px;cursor:pointer;}
+.btn-del-linea:hover{background:#fee2e2;}
+.lineas-total-row{font-size:11px;font-weight:700;color:var(--is-navy);text-align:right;margin-top:6px;padding:6px 0;border-top:1px solid var(--border);}
 .tbl-sel{font-size:9px;font-weight:700;font-family:'Montserrat',sans-serif;border:1px solid transparent;border-radius:3px;padding:2px 6px;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='7' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;padding-right:16px;}
 .tbl-sel:hover{border-color:var(--border2);}
 .tbl-date{font-size:9px;font-family:'Montserrat',sans-serif;border:1px solid var(--border);border-radius:3px;padding:2px 4px;color:var(--text2);background:var(--bg2);outline:none;width:88px;}
@@ -356,7 +367,6 @@ input[type=text]:focus{border-color:var(--is-cyan);}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="fg2 form-full"><label>Descripción del requerimiento</label><textarea id="f-desc" rows="2" placeholder="Ej: Guantes nitrilo talla M x 200 unidades"></textarea></div>
         <div class="fg2"><label>Área solicitante</label><input id="f-area-in" list="dl-areas" placeholder="Ej: Pabellón"><datalist id="dl-areas"></datalist></div>
         <div class="fg2"><label>Empresa solicitante</label><input id="f-empresa-in" list="dl-empresas" placeholder="Ej: ImagenSalud S.A."><datalist id="dl-empresas"></datalist></div>
         <div class="fg2"><label>Solicitante</label>
@@ -373,20 +383,23 @@ input[type=text]:focus{border-color:var(--is-cyan);}
         <div class="fg2"><label>Prioridad</label>
           <select id="f-prio-in"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option></select>
         </div>
-        <div class="fg2"><label>Código de material</label><input id="f-codigo-in" placeholder="Ej: 10234 (Softland)"></div>
-        <div class="fg2"><label>Familia / Categoría</label><select id="f-cat-in"></select></div>
         <div class="fg2"><label>Estado</label>
           <select id="f-est-in"><option>Pendiente</option><option>Validación Técnica</option><option>En proceso</option><option>En cotización</option><option>Recotización</option><option>Comprada</option><option>Recibido</option><option>Eliminada</option></select>
         </div>
         <div class="fg2"><label>Proveedor sugerido</label><input id="f-provsug-in" list="dl-provs-sug" placeholder="Proveedor recomendado"><datalist id="dl-provs-sug"></datalist></div>
         <div class="fg2"><label>Destino</label><input id="f-destino-in" list="dl-destinos" placeholder="Ej: Bodega central, Pabellón 2"><datalist id="dl-destinos"></datalist></div>
         <div class="fg2"><label>Fecha emisión OC</label><input type="date" id="f-oc-in"></div>
-        <div class="fg2"><label>Monto neto OC ($)</label><input type="number" id="f-monto-in" placeholder="Ej: 450000" min="0" step="1"></div>
+        <div class="fg2"><label>Monto neto OC ($)</label><input type="number" id="f-monto-in" placeholder="Se calcula solo, o edítalo" min="0" step="1"></div>
         <div class="fg2"><label>Fecha estimada entrega (cotización)</label><input type="date" id="f-festim-in"></div>
         <div class="fg2"><label>Fecha real de entrega</label><input type="date" id="f-freal-in"></div>
         <div class="fg2"><label>Fecha resolución</label><input type="date" id="f-resol-in"></div>
         <div class="fg2 form-full"><label>Observaciones / canal de llegada</label><textarea id="f-obs-in" rows="2" placeholder="Ej: Llegó por Teams, urgente por stock crítico"></textarea></div>
       </div>
+
+      <div class="section-lbl" style="margin-top:14px;">Líneas de la solicitud (materiales / servicios)</div>
+      <div id="lineas-wrap"></div>
+      <button type="button" class="btn btn-g" style="margin-top:6px;" onclick="addLinea()">＋ Agregar línea</button>
+
       <div class="modal-actions">
         <button class="btn-del" id="btn-del" onclick="deleteCurrent()" style="display:none;">🗑 Eliminar</button>
         <button class="modal-close" onclick="closeModal('modal-form')">Cancelar</button>
@@ -454,20 +467,17 @@ function fmtCLP(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CL');}
 function normalizeRecord(s){
   // Garantiza que todos los campos existan para evitar errores en render
   s.id=s.id||'';
-  s.desc=s.desc||'';
   s.area=s.area||'';
   s.empresaSolicitante=s.empresaSolicitante||'';
   s.destino=s.destino||'';
   s.solicitante=s.solicitante||'';
   s.comprador=s.comprador||'';
   s.prioridad=s.prioridad||'Media';
-  s.categoria=s.categoria||'';
-  s.codigo=s.codigo||'';
   s.estado=ESTADOS.includes(s.estado)?s.estado:'Pendiente';
   s.aprobacion=s.aprobacion||'Pendiente';
   s.proveedorSugerido=s.proveedorSugerido||'';
   s.numeroOC=s.numeroOC||'';
-  s.montoNetoOC=Number(s.montoNetoOC)||0;
+  s.ocEnviada=s.ocEnviada||'No';
   s.proveedor=s.proveedor||'';
   s.fechaIngreso=s.fechaIngreso||today();
   s.fechaEmisionOC=s.fechaEmisionOC||'';
@@ -477,6 +487,28 @@ function normalizeRecord(s){
   s.observaciones=s.observaciones||'';
   s.hist=s.hist||[];
   s.updatedAt=s.updatedAt||now();
+
+  // Líneas (materiales/servicios) — compatibilidad con registros antiguos de un solo ítem
+  if(!Array.isArray(s.lineas)||!s.lineas.length){
+    s.lineas=[{
+      codigo:s.codigo||'', desc:s.desc||'', categoria:s.categoria||FAMILIAS[1],
+      um:s.unidadMedida||'', cantidad:s.cantidad||1, precio:s.precioUnit||0,
+      centroCostos:s.centroCostos||''
+    }];
+  }
+  s.lineas.forEach(l=>{
+    l.codigo=l.codigo||''; l.desc=l.desc||''; l.categoria=l.categoria||FAMILIAS[1];
+    l.um=l.um||''; l.cantidad=Number(l.cantidad)||1; l.precio=Number(l.precio)||0;
+    l.centroCostos=l.centroCostos||'';
+  });
+  // Campos derivados para compatibilidad (tabla/búsqueda/Kanban usan desc/codigo/categoria resumidos)
+  s.desc=s.lineas.map(l=>l.desc).filter(Boolean).join(' | ')||'(sin descripción)';
+  s.codigo=s.lineas.map(l=>l.codigo).filter(Boolean).join(', ');
+  s.categoria=s.lineas[0].categoria;
+  // Si no hay monto manual, se calcula de las líneas
+  const lineasTotal=s.lineas.reduce((a,l)=>a+(l.cantidad*l.precio),0);
+  if(!s.montoNetoOC || s.montoNetoOC===0) s.montoNetoOC=lineasTotal;
+  s.montoNetoOC=Number(s.montoNetoOC)||0;
   return s;
 }
 function computeNextId(){
@@ -529,8 +561,6 @@ function refreshDroplists(){
   document.getElementById('dl-provs-sug').innerHTML=provsSug.map(p=>`<option value="${p}">`).join('');
   const destinos=[...new Set(data.map(s=>s.destino).filter(Boolean))].sort();
   document.getElementById('dl-destinos').innerHTML=destinos.map(p=>`<option value="${p}">`).join('');
-  const catSel=document.getElementById('f-cat-in');
-  if(catSel && !catSel.dataset.filled){catSel.innerHTML=FAMILIAS.map(c=>`<option value="${c}">${c}</option>`).join('');catSel.dataset.filled='1';}
 }
 
 function switchTab(i){
@@ -632,10 +662,10 @@ function renderKanban(fd){
 function renderTable(fd){
   const sorted=[...fd].sort((a,b)=>{const oi=ESTADOS.indexOf(a.estado)-ESTADOS.indexOf(b.estado);return oi||PRIO_ORD[a.prioridad]-PRIO_ORD[b.prioridad];});
   document.getElementById('main-table').innerHTML=`
-    <thead><tr><th>N° Solicitud</th><th>Código</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>Monto Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
+    <thead><tr><th>N° Solicitud</th><th>Líneas</th><th>Descripción</th><th>Área</th><th>Empresa</th><th>Destino</th><th>Solicitante</th><th>Comprador</th><th>Prioridad</th><th>Estado</th><th>Aprobación</th><th>Prov. Sugerido</th><th>N° OC</th><th>OC Enviada</th><th>Monto Neto OC</th><th>Proveedor (real)</th><th>F. Ingreso</th><th>F. Emisión OC</th><th>F. Estim. Entrega</th><th>F. Real Entrega</th><th>Días</th><th>¿Fuera SLA?</th><th></th></tr></thead>
     <tbody>${sorted.map(s=>`<tr>
       <td><span class="sol-id" style="cursor:pointer;" onclick="openDetail('${s.id}')">${s.id}</span></td>
-      <td>${s.codigo||'—'}</td>
+      <td><span class="b ba" style="cursor:pointer;" onclick="openDetail('${s.id}')">${(s.lineas||[]).length} ítem${(s.lineas||[]).length===1?'':'s'}</span></td>
       <td style="max-width:220px;white-space:normal;font-size:10px;">${s.desc}</td>
       <td>${s.area||'—'}</td><td>${textInputHTML(s,'empresaSolicitante')}</td><td>${textInputHTML(s,'destino')}</td><td>${s.solicitante||'—'}</td><td>${s.comprador||'—'}</td>
       <td>${prioSelectHTML(s)}</td>
@@ -643,6 +673,7 @@ function renderTable(fd){
       <td>${aprobSelectHTML(s)}</td>
       <td>${textInputHTML(s,'proveedorSugerido')}</td>
       <td>${textInputHTML(s,'numeroOC')}</td>
+      <td>${ocEnviadaSelectHTML(s)}</td>
       <td>${numberInputHTML(s,'montoNetoOC')}</td>
       <td>${textInputHTML(s,'proveedor')}</td>
       <td>${s.fechaIngreso||'—'}</td>
@@ -662,6 +693,14 @@ function aprobSelectHTML(s){
     <option${v==='Pendiente'?' selected':''}>Pendiente</option>
     <option${v==='Aprobado'?' selected':''}>Aprobado</option>
     <option${v==='Rechazado'?' selected':''}>Rechazado</option>
+  </select>`;
+}
+function ocEnviadaSelectHTML(s){
+  const v=s.ocEnviada||'No';
+  const cls=v==='Sí'?'sel-bg':'sel-bo';
+  return `<select class="tbl-sel ${cls}" onchange="inlineUpdate('${s.id}','ocEnviada',this.value)">
+    <option${v==='No'?' selected':''}>No</option>
+    <option${v==='Sí'?' selected':''}>Sí</option>
   </select>`;
 }
 function numberInputHTML(s,field){
@@ -699,12 +738,47 @@ function inlineUpdate(id,field,value){
   toast(`${s.id} actualizado ✓`,'ok');
 }
 
+let formLineas=[]; // líneas en edición dentro del modal
+
+function blankLinea(){
+  return {codigo:'',desc:'',categoria:FAMILIAS[1],um:'',cantidad:1,precio:0,centroCostos:''};
+}
+
+function renderLineas(){
+  const wrap=document.getElementById('lineas-wrap');
+  const total=formLineas.reduce((a,l)=>a+(Number(l.cantidad)||0)*(Number(l.precio)||0),0);
+  wrap.innerHTML=`<table class="lineas-table"><thead><tr>
+    <th class="col-codigo">Código</th><th class="col-desc">Descripción</th><th class="col-cat">Familia</th>
+    <th class="col-um">U. Medida</th><th class="col-cant">Cant.</th><th class="col-precio">Precio Unit.</th>
+    <th class="col-cc">Centro Costos</th><th class="col-sub">Subtotal</th><th class="col-del"></th>
+  </tr></thead><tbody>
+  ${formLineas.map((l,i)=>`<tr>
+    <td class="col-codigo"><input value="${(l.codigo||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'codigo',this.value)" placeholder="10234"></td>
+    <td class="col-desc"><input value="${(l.desc||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'desc',this.value)" placeholder="Descripción del ítem"></td>
+    <td class="col-cat"><select onchange="updateLinea(${i},'categoria',this.value)">${FAMILIAS.map(f=>`<option value="${f}"${l.categoria===f?' selected':''}>${f}</option>`).join('')}</select></td>
+    <td class="col-um"><input value="${(l.um||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'um',this.value)" placeholder="UN, CAJA…"></td>
+    <td class="col-cant"><input type="number" min="0" step="1" value="${l.cantidad}" onchange="updateLinea(${i},'cantidad',this.value)"></td>
+    <td class="col-precio"><input type="number" min="0" step="1" value="${l.precio}" onchange="updateLinea(${i},'precio',this.value)"></td>
+    <td class="col-cc"><input value="${(l.centroCostos||'').replace(/"/g,'&quot;')}" onchange="updateLinea(${i},'centroCostos',this.value)" placeholder="CC-101"></td>
+    <td class="col-sub"><span class="linea-subtotal">${fmtCLP((Number(l.cantidad)||0)*(Number(l.precio)||0))}</span></td>
+    <td class="col-del">${formLineas.length>1?`<button type="button" class="btn-del-linea" onclick="removeLinea(${i})">✕</button>`:''}</td>
+  </tr>`).join('')}
+  </tbody></table>
+  <div class="lineas-total-row">Total estimado: ${fmtCLP(total)}</div>`;
+}
+function addLinea(){ formLineas.push(blankLinea()); renderLineas(); }
+function removeLinea(i){ if(formLineas.length<=1) return; formLineas.splice(i,1); renderLineas(); }
+function updateLinea(i,field,value){
+  if(field==='cantidad'||field==='precio') formLineas[i][field]=Number(value)||0;
+  else formLineas[i][field]=value;
+  renderLineas();
+}
+
 function openNew(){
   editId=null;
   document.getElementById('form-title').textContent='Nueva solicitud';
   document.getElementById('btn-del').style.display='none';
-  ['f-desc','f-area-in','f-empresa-in','f-sol-in','f-comp-in','f-codigo-in','f-obs-in'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-cat-in').value=FAMILIAS[1];
+  ['f-area-in','f-empresa-in','f-sol-in','f-comp-in','f-obs-in'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-prio-in').value='Media';
   document.getElementById('f-est-in').value='Pendiente';
   document.getElementById('f-provsug-in').value='';
@@ -714,6 +788,8 @@ function openNew(){
   document.getElementById('f-festim-in').value='';
   document.getElementById('f-freal-in').value='';
   document.getElementById('f-resol-in').value='';
+  formLineas=[blankLinea()];
+  renderLineas();
   document.getElementById('modal-form').classList.add('open');
 }
 function openEdit(id){
@@ -721,14 +797,11 @@ function openEdit(id){
   editId=id;
   document.getElementById('form-title').textContent='Editar — '+s.id;
   document.getElementById('btn-del').style.display='';
-  document.getElementById('f-desc').value=s.desc||'';
   document.getElementById('f-area-in').value=s.area||'';
   document.getElementById('f-empresa-in').value=s.empresaSolicitante||'';
   document.getElementById('f-sol-in').value=s.solicitante||'';
   document.getElementById('f-comp-in').value=s.comprador||'';
   document.getElementById('f-prio-in').value=s.prioridad||'Media';
-  document.getElementById('f-cat-in').value=s.categoria||FAMILIAS[1];
-  document.getElementById('f-codigo-in').value=s.codigo||'';
   document.getElementById('f-est-in').value=s.estado||'Pendiente';
   document.getElementById('f-provsug-in').value=s.proveedorSugerido||'';
   document.getElementById('f-destino-in').value=s.destino||'';
@@ -738,32 +811,45 @@ function openEdit(id){
   document.getElementById('f-freal-in').value=s.fechaRealEntrega||'';
   document.getElementById('f-resol-in').value=s.fechaResolucion||'';
   document.getElementById('f-obs-in').value=s.observaciones||'';
+  formLineas=JSON.parse(JSON.stringify(s.lineas&&s.lineas.length?s.lineas:[blankLinea()]));
+  renderLineas();
   document.getElementById('modal-form').classList.add('open');
 }
 function saveForm(){
-  const desc=document.getElementById('f-desc').value.trim();
-  if(!desc){alert('La descripción es obligatoria.');return;}
+  if(!formLineas.length||!formLineas.some(l=>l.desc&&l.desc.trim())){
+    alert('Agrega al menos una línea con descripción.');return;
+  }
   const estado=document.getElementById('f-est-in').value;
+  const lineasClean=formLineas.map(l=>({...l,desc:(l.desc||'').trim(),codigo:(l.codigo||'').trim()})).filter(l=>l.desc);
+  const montoManual=Number(document.getElementById('f-monto-in').value)||0;
+  const montoCalc=lineasClean.reduce((a,l)=>a+(Number(l.cantidad)||0)*(Number(l.precio)||0),0);
+
   if(editId){
     const s=data.find(x=>x.id===editId);if(!s)return;
     const cambio=s.estado!==estado;
-    Object.assign(s,{desc,area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),solicitante:document.getElementById('f-sol-in').value.trim(),
-      comprador:document.getElementById('f-comp-in').value.trim(),prioridad:document.getElementById('f-prio-in').value,
-      categoria:document.getElementById('f-cat-in').value,codigo:document.getElementById('f-codigo-in').value.trim(),estado,proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:Number(document.getElementById('f-monto-in').value)||0,
+    Object.assign(s,{area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),
+      solicitante:document.getElementById('f-sol-in').value.trim(),comprador:document.getElementById('f-comp-in').value.trim(),
+      prioridad:document.getElementById('f-prio-in').value,estado,lineas:lineasClean,
+      proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
+      fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
       fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
       fechaResolucion:document.getElementById('f-resol-in').value,observaciones:document.getElementById('f-obs-in').value.trim()});
+    normalizeRecord(s);
     s.hist.push({ts:fmtTs(new Date()),msg:cambio?`Estado: → "${estado}"`:'Solicitud editada'});
     s.updatedAt=now();
     save(); fbPush(s);
   }else{
     const id='SOL-'+String(nextId++).padStart(3,'0');
-    data.unshift({id,desc,area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),
+    const rec={id,area:document.getElementById('f-area-in').value.trim(),empresaSolicitante:document.getElementById('f-empresa-in').value.trim(),
       solicitante:document.getElementById('f-sol-in').value.trim(),comprador:document.getElementById('f-comp-in').value.trim()||'Víctor',
-      prioridad:document.getElementById('f-prio-in').value,categoria:document.getElementById('f-cat-in').value,codigo:document.getElementById('f-codigo-in').value.trim(),
-      estado,fechaIngreso:today(),proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),numeroOC:'',proveedor:'',fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:Number(document.getElementById('f-monto-in').value)||0,
+      prioridad:document.getElementById('f-prio-in').value,estado,lineas:lineasClean,
+      fechaIngreso:today(),proveedorSugerido:document.getElementById('f-provsug-in').value.trim(),destino:document.getElementById('f-destino-in').value.trim(),
+      numeroOC:'',proveedor:'',fechaEmisionOC:document.getElementById('f-oc-in').value,montoNetoOC:montoManual||montoCalc,
       fechaEstimEntrega:document.getElementById('f-festim-in').value,fechaRealEntrega:document.getElementById('f-freal-in').value,
       fechaResolucion:document.getElementById('f-resol-in').value,observaciones:document.getElementById('f-obs-in').value.trim(),
-      hist:[{ts:fmtTs(new Date()),msg:`Solicitud creada · Estado: ${estado}`}],updatedAt:now()});
+      hist:[{ts:fmtTs(new Date()),msg:`Solicitud creada · Estado: ${estado}`}],updatedAt:now()};
+    normalizeRecord(rec);
+    data.unshift(rec);
   }
   if(!editId){ const nr=data[0]; save(); fbPush(nr); }
   closeModal('modal-form');refreshDroplists();renderAll();
@@ -793,22 +879,25 @@ function openDetail(id){
   const ECLS={Pendiente:'bo','Validación Técnica':'bvt','En proceso':'ba','En cotización':'bcz',Recotización:'brt',Comprada:'bg',Recibido:'bnv',Eliminada:'bx'};
   const EACT={Pendiente:'active-pend','Validación Técnica':'active-vtec','En proceso':'active-proc','En cotización':'active-cotz',Recotización:'active-recot',Comprada:'active-comp',Recibido:'active-recib',Eliminada:'active-elim'};
   document.getElementById('det-title').textContent=s.id+' — '+s.desc.slice(0,45)+(s.desc.length>45?'…':'');
+  const lineasHTML=(s.lineas||[]).map(l=>`<tr>
+      <td>${l.codigo||'—'}</td><td style="white-space:normal;">${l.desc||'—'}</td><td>${l.categoria||'—'}</td>
+      <td>${l.um||'—'}</td><td>${l.cantidad}</td><td>${fmtCLP(l.precio)}</td><td>${l.centroCostos||'—'}</td>
+      <td>${fmtCLP((l.cantidad||0)*(l.precio||0))}</td>
+    </tr>`).join('');
   document.getElementById('det-body').innerHTML=`
     <div class="det-row"><span class="det-lbl">N° Solicitud</span><span class="sol-id">${s.id}</span></div>
-    <div class="det-row"><span class="det-lbl">Descripción</span><span class="det-val">${s.desc}</span></div>
     <div class="det-row"><span class="det-lbl">Área</span><span class="det-val">${s.area||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Empresa solicitante</span><span class="det-val">${s.empresaSolicitante||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Solicitante</span><span class="det-val">${s.solicitante||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Comprador</span><span class="det-val">${s.comprador||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Prioridad</span><span class="b ${s.prioridad==='Alta'?'br':s.prioridad==='Baja'?'bg':'bo'}">${s.prioridad}</span></div>
-    <div class="det-row"><span class="det-lbl">Código material</span><span class="det-val">${s.codigo||'—'}</span></div>
-    <div class="det-row"><span class="det-lbl">Familia</span><span class="det-val">${s.categoria||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Estado</span><span class="b ${ECLS[s.estado]}">${s.estado}</span></div>
     <div class="det-row"><span class="det-lbl">Fecha ingreso</span><span class="det-val">${s.fechaIngreso||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Destino</span><span class="det-val">${s.destino||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Proveedor sugerido</span><span class="det-val">${s.proveedorSugerido||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Aprobación</span><span class="b ${s.aprobacion==='Aprobado'?'bg':s.aprobacion==='Rechazado'?'br':'bo'}">${s.aprobacion||'Pendiente'}</span></div>
     <div class="det-row"><span class="det-lbl">N° Orden Compra</span><span class="det-val">${s.numeroOC||'—'}</span></div>
+    <div class="det-row"><span class="det-lbl">OC enviada al proveedor</span><span class="b ${s.ocEnviada==='Sí'?'bg':'bo'}">${s.ocEnviada||'No'}</span></div>
     <div class="det-row"><span class="det-lbl">Monto neto OC</span><span class="det-val">${s.montoNetoOC?fmtCLP(s.montoNetoOC):'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Proveedor (real)</span><span class="det-val">${s.proveedor||'—'}</span></div>
     <div class="det-row"><span class="det-lbl">Fecha emisión OC</span><span class="det-val">${s.fechaEmisionOC||'—'}</span></div>
@@ -818,6 +907,8 @@ function openDetail(id){
     ${s.fechaResolucion?`<div class="det-row"><span class="det-lbl">Fecha resolución</span><span class="det-val">${s.fechaResolucion}</span></div>`:''}
     <div class="det-row"><span class="det-lbl">Días en curso</span><span class="det-val">${diasEnCurso(s)} días</span></div>
     ${s.observaciones?`<div class="det-row"><span class="det-lbl">Observaciones</span><span class="det-val">${s.observaciones}</span></div>`:''}
+    <div class="section-lbl">Líneas de la solicitud</div>
+    <table class="mt" style="width:100%;"><thead><tr><th>Código</th><th>Descripción</th><th>Familia</th><th>U.Medida</th><th>Cant.</th><th>Precio Unit.</th><th>C. Costos</th><th>Subtotal</th></tr></thead><tbody>${lineasHTML}</tbody></table>
     <div class="section-lbl">Cambiar estado</div>
     <div class="estado-btns">${ESTADOS.map(e=>`<button class="est-btn${s.estado===e?' '+EACT[e]:''}" onclick="changeEstado('${id}','${e}')">${e}</button>`).join('')}</div>
     <div class="modal-actions" style="margin-top:6px;justify-content:flex-start;">
@@ -860,17 +951,24 @@ function closeFocus(e){
 document.getElementById('focus-close').addEventListener('click',()=>{closeFocus({target:document.getElementById('focus-overlay')});});
 
 function exportXLSX(){
-  const rows=[['N° Solicitud','Código','Descripción','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Familia','Estado','Aprobación','Proveedor sugerido','N° OC','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Fecha resolución','Días en curso','¿Fuera de SLA?','Observaciones']];
-  data.forEach(s=>rows.push([s.id,s.codigo||'',s.desc,s.area,s.empresaSolicitante||'',s.destino||'',s.solicitante,s.comprador,s.prioridad,s.categoria,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',Number(s.montoNetoOC)||0,s.proveedor||'',s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',s.fechaResolucion,diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]));
+  const rows=[['N° Solicitud','Código','Descripción Línea','Familia','U.Medida','Cantidad','Precio Unit.','Subtotal','Centro Costos','Área','Empresa solicitante','Destino','Solicitante','Comprador','Prioridad','Estado','Aprobación','Proveedor sugerido','N° OC','OC Enviada','Monto neto OC','Proveedor real','Fecha ingreso','Fecha emisión OC','Fecha estim. entrega','Fecha real entrega','Fecha resolución','Días en curso','¿Fuera de SLA?','Observaciones']];
+  data.forEach(s=>{
+    const lineas=(s.lineas&&s.lineas.length)?s.lineas:[{codigo:'',desc:s.desc,categoria:'',um:'',cantidad:1,precio:0,centroCostos:''}];
+    lineas.forEach(l=>{
+      rows.push([s.id,l.codigo||'',l.desc||'',l.categoria||'',l.um||'',l.cantidad||0,Number(l.precio)||0,(l.cantidad||0)*(Number(l.precio)||0),l.centroCostos||'',
+        s.area,s.empresaSolicitante||'',s.destino||'',s.solicitante,s.comprador,s.prioridad,s.estado,s.aprobacion||'Pendiente',s.proveedorSugerido||'',s.numeroOC||'',s.ocEnviada||'No',Number(s.montoNetoOC)||0,s.proveedor||'',
+        s.fechaIngreso,s.fechaEmisionOC||'',s.fechaEstimEntrega||'',s.fechaRealEntrega||'',s.fechaResolucion,diasEnCurso(s),isOutOfSLA(s)?'Sí':'No',s.observaciones]);
+    });
+  });
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:12},{wch:12},{wch:42},{wch:18},{wch:20},{wch:18},{wch:18},{wch:16},{wch:10},{wch:18},{wch:16},{wch:18},{wch:14},{wch:14},{wch:18},{wch:14},{wch:14},{wch:16},{wch:16},{wch:14},{wch:12},{wch:10},{wch:30}];
+  ws['!cols']=[{wch:12},{wch:12},{wch:32},{wch:18},{wch:10},{wch:9},{wch:12},{wch:12},{wch:12},{wch:18},{wch:20},{wch:18},{wch:18},{wch:16},{wch:10},{wch:16},{wch:12},{wch:18},{wch:14},{wch:14},{wch:18},{wch:14},{wch:16},{wch:16},{wch:14},{wch:14},{wch:10},{wch:12},{wch:30}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'SOLICITUDES');
   const ds=[['RESUMEN EJECUTIVO',''],['',''],['Estado','Cantidad']];
   ESTADOS.forEach(e=>ds.push([e,data.filter(s=>s.estado===e).length]));
-  ds.push(['',''],['TOTAL',data.length],['',''],['Fuera de SLA',data.filter(s=>isOutOfSLA(s)).length],['Alta prioridad',data.filter(s=>s.prioridad==='Alta').length]);
+  ds.push(['',''],['TOTAL SOLICITUDES',data.length],['',''],['Fuera de SLA',data.filter(s=>isOutOfSLA(s)).length],['Alta prioridad',data.filter(s=>s.prioridad==='Alta').length]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ds),'RESUMEN');
   XLSX.writeFile(wb,'Tracker_Solicitudes_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  toast('Excel exportado ✓','ok');
+  toast('Excel exportado ✓ (una fila por línea)','ok');
 }
 function importXLSX(input){
   const file=input.files[0];if(!file)return;
@@ -880,16 +978,28 @@ function importXLSX(input){
       const wb=XLSX.read(e.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-      let imp=0;
+      // Agrupa filas por N° Solicitud para reconstruir líneas
+      const grouped={};
       rows.forEach(r=>{
         const rid=String(r['N° Solicitud']||r['ID']||'').trim();
-        if(!rid||!r['Descripción'])return;
+        if(!rid) return;
+        if(!grouped[rid]) grouped[rid]={meta:r,lineas:[]};
+        grouped[rid].lineas.push({
+          codigo:String(r['Código']||''), desc:String(r['Descripción Línea']||r['Descripción']||''),
+          categoria:String(r['Familia']||FAMILIAS[1]), um:String(r['U.Medida']||''),
+          cantidad:Number(r['Cantidad'])||1, precio:Number(r['Precio Unit.'])||0,
+          centroCostos:String(r['Centro Costos']||'')
+        });
+      });
+      let imp=0;
+      Object.entries(grouped).forEach(([rid,g])=>{
+        const r=g.meta;
+        if(!g.lineas.some(l=>l.desc)) return;
         const exists=data.find(s=>s.id===rid);
-        const sol={id:rid,codigo:String(r['Código']||''),desc:String(r['Descripción']),area:String(r['Área']||''),empresaSolicitante:String(r['Empresa solicitante']||''),destino:String(r['Destino']||''),solicitante:String(r['Solicitante']||''),
+        const sol={id:rid,lineas:g.lineas.filter(l=>l.desc),area:String(r['Área']||''),empresaSolicitante:String(r['Empresa solicitante']||''),destino:String(r['Destino']||''),solicitante:String(r['Solicitante']||''),
           comprador:String(r['Comprador']||'Víctor'),prioridad:String(r['Prioridad']||'Media'),
-          categoria:String(r['Familia']||r['Categoría']||FAMILIAS[1]),estado:String(r['Estado']||'Pendiente'),aprobacion:String(r['Aprobación']||'Pendiente'),proveedorSugerido:String(r['Proveedor sugerido']||''),
-          numeroOC:String(r['N° OC']||''),proveedor:String(r['Proveedor']||''),
-          numeroOC:String(r['N° OC']||''),montoNetoOC:Number(r['Monto neto OC'])||0,proveedor:String(r['Proveedor real']||r['Proveedor']||''),
+          estado:String(r['Estado']||'Pendiente'),aprobacion:String(r['Aprobación']||'Pendiente'),proveedorSugerido:String(r['Proveedor sugerido']||''),
+          numeroOC:String(r['N° OC']||''),ocEnviada:String(r['OC Enviada']||'No'),montoNetoOC:Number(r['Monto neto OC'])||0,proveedor:String(r['Proveedor real']||r['Proveedor']||''),
           fechaIngreso:String(r['Fecha ingreso']||today()),fechaEmisionOC:String(r['Fecha emisión OC']||''),
           fechaEstimEntrega:String(r['Fecha estim. entrega']||''),fechaRealEntrega:String(r['Fecha real entrega']||''),
           fechaResolucion:String(r['Fecha resolución']||''),observaciones:String(r['Observaciones']||''),
@@ -898,7 +1008,7 @@ function importXLSX(input){
       });
       data.forEach(s=>{normalizeRecord(s);const n=parseInt(s.id.replace('SOL-',''));if(!isNaN(n)&&n>=nextId)nextId=n+1;});
       save();refreshDroplists();renderAll();
-      toast(`Importado: ${imp} nuevas, ${rows.length-imp} actualizadas ✓`,'ok');
+      toast(`Importado: ${imp} nuevas, ${Object.keys(grouped).length-imp} actualizadas ✓`,'ok');
     }catch(err){toast('Error al importar: '+err.message,'err');}
   };
   reader.readAsArrayBuffer(file);input.value='';
