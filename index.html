@@ -436,10 +436,10 @@ function save(showLabel){
   }catch(e){}
 }
 function load(){
-  try{const r=localStorage.getItem('tracker_is2');if(r){const p=JSON.parse(r);data=p.data||[];nextId=p.nextId||1;}}catch(e){}
-  data.forEach(s=>normalizeRecord(s));
-  nextId=computeNextId();
-  refreshDroplists(); renderAll();
+  // No renderizar datos locales hasta confirmar el estado real en Firebase.
+  // Esto evita que aparezcan datos viejos/demo "fantasma" del navegador.
+  data=[];
+  setSyncStatus('Cargando datos…','syncing');
   startFirebaseSync();
 }
 
@@ -995,13 +995,20 @@ async function fbPullAll(initialLoad){
 
 async function startFirebaseSync(){
   setSyncStatus('Conectando a Firebase…','syncing');
-  // Initial pull — Firebase is the source of truth, overrides local data
   const ok=await fbPullAll(true);
   if(ok){
     updateSyncUI(true);
   }else{
+    // Firebase no respondió — como último recurso, mostrar copia local
+    // pero dejando CLARO que no está sincronizado
+    try{
+      const r=localStorage.getItem('tracker_is2');
+      if(r){ const p=JSON.parse(r); data=p.data||[]; nextId=p.nextId||1; data.forEach(s=>normalizeRecord(s)); }
+    }catch(e){}
+    nextId=computeNextId();
+    refreshDroplists(); renderAll();
     updateSyncUI(false);
-    setSyncStatus('Sin conexión a Firebase (modo local)','err');
+    setSyncStatus('⚠ Sin conexión a Firebase — mostrando copia local desactualizada','err');
   }
   // Poll every 8 seconds for changes from other users
   setInterval(async()=>{
